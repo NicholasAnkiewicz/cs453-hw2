@@ -57,9 +57,8 @@ def start_receiver(server_ip, server_port, connection_ID, loss_rate=0.0, corrupt
         return 0
     def connect_gaia(ip, port, id):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
         if ip == "gaia.cs.umass.edu":
-            s.connect(("127.0.0.1", 65500))
+            s.connect((ip, int(port)))
             s.sendall(("HELLO R {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id)).encode())
             while(True):
                 recieved_gaia = s.recv(1024)
