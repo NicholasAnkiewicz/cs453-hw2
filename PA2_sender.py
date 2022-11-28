@@ -67,23 +67,24 @@ def start_sender(server_ip, server_port, connection_ID, loss_rate=0, corrupt_rat
     def connect_gaia(ip, port, id):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, int(port)))
-        print("HELLO S {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id))
-        s.sendall(("HELLO S {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id)).encode())
-        while(True):
-            recieved_gaia = s.recv(1024)
-            recieved_gaia = recieved_gaia.decode()
-            if recieved_gaia.count("WAITING") > 0:
-                print(recieved_gaia)
-                continue
+        if ip == "gaia.cs.umass.edu":
+            s.sendall(("HELLO S {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id)).encode())
+            while(True):
+                recieved_gaia = s.recv(1024)
+                recieved_gaia = recieved_gaia.decode()
+                if recieved_gaia.count("WAITING") > 0:
+                    continue
+                else:
+                    break
+            if recieved_gaia.count("OK") > 0:
+                print("{} {}".format(recieved_gaia, datetime.datetime.now()))
+                return s
+            elif recieved_gaia.count("ERROR") > 0:
+                print("Cannot connect to gaia.cs.umass.edu, error message: " + recieved_gaia)
             else:
-                break
-        if recieved_gaia.count("OK") > 0:
-            print("{} {}".format(recieved_gaia, datetime.datetime.now()))
-            return s
-        elif recieved_gaia.count("ERROR") > 0:
-            print("Cannot connect to gaia.cs.umass.edu, error message: " + recieved_gaia)
+                print(recieved_gaia)
         else:
-            print(recieved_gaia)
+            return s
 
     def flip_bit(num):
         if num == 0:
@@ -96,10 +97,9 @@ def start_sender(server_ip, server_port, connection_ID, loss_rate=0, corrupt_rat
     ack_num = 0
     seq_num = 0
     recieved_correct_ack_flag = -1
-    while (True):
+    while (file.tell() < 200):
         data = file.read(20)
         if data == '':
-            print("SENT ALL DATA!!!")
             break
         while (len(data) < 20):
             data += " "
@@ -109,7 +109,6 @@ def start_sender(server_ip, server_port, connection_ID, loss_rate=0, corrupt_rat
             break
         s.sendall(pcket.encode())
         total_packet_sent += 1
-        print("Sent packet!")
         recieved_correct_ack_flag = -1
         while(recieved_correct_ack_flag != 1):
             read_sock, _, _ = select.select([s], [], [], transmission_timeout)
@@ -118,26 +117,22 @@ def start_sender(server_ip, server_port, connection_ID, loss_rate=0, corrupt_rat
                     recieved = s.recv(1024)
                     recieved = recieved.decode()
                     total_packet_recv += 1
-                    print("Recieved: {}".format(recieved))
                     if (checksum_verifier(recieved)):
                         recieved_ack = recieved.split(" ")
                         recieved_ack = list(filter(None, recieved_ack))
                         if int(recieved_ack[0]) == seq_num:
-                            print("Recieved correct ack")
                             recieved_correct_ack_flag = 1
                             seq_num = flip_bit(seq_num)
                             break
                         else:
-                            print("Recieved incorrect ack")
+                            pass
                     else:
                         total_corrupted_pkt_recv += 1
             else:
-                print("Timeout!: resent")
                 total_packet_sent += 1
                 total_timeout += 1
                 s.sendall(pcket.encode())
     file.close()
-    print(len(store))
     checksum_val = checksum(store)
     ##### END YOUR IMPLEMENTATION HERE #####
 

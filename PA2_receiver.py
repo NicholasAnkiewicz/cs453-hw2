@@ -58,23 +58,24 @@ def start_receiver(server_ip, server_port, connection_ID, loss_rate=0.0, corrupt
     def connect_gaia(ip, port, id):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((ip, int(port)))
-        print("HELLO R {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id))
-        s.sendall(("HELLO R {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id)).encode())
-        while(True):
-            recieved_gaia = s.recv(1024)
-            recieved_gaia = recieved_gaia.decode()
-            if recieved_gaia.count("WAITING") > 0:
-                print(recieved_gaia)
-                continue
+        if ip == "gaia.cs.umass.edu":
+            s.sendall(("HELLO R {} {} {} {}".format(loss_rate, corrupt_rate, max_delay, id)).encode())
+            while(True):
+                recieved_gaia = s.recv(1024)
+                recieved_gaia = recieved_gaia.decode()
+                if recieved_gaia.count("WAITING") > 0:
+                    continue
+                else:
+                    break
+            if recieved_gaia.count("OK") > 0:
+                print("{} {}".format(recieved_gaia, datetime.datetime.now()))
+                return s
+            elif recieved_gaia.count("ERROR") > 0:
+                print("Cannot connect to gaia.cs.umass.edu, error message: " + recieved_gaia)
             else:
-                break
-        if recieved_gaia.count("OK") > 0:
-            print("{} {}".format(recieved_gaia, datetime.datetime.now()))
-            return s
-        elif recieved_gaia.count("ERROR") > 0:
-            print("Cannot connect to gaia.cs.umass.edu, error message: " + recieved_gaia)
+                print(recieved_gaia)
         else:
-            print(recieved_gaia)
+            return s
 
     cur_seq_num = 0
     file_recieved = ""
@@ -90,10 +91,8 @@ def start_receiver(server_ip, server_port, connection_ID, loss_rate=0.0, corrupt
             break
         recv_seq_num = int(recieved[0])
         data = recieved[4:24]
-        print("Recieved a packet")
         num_recieved += 1
         if not checksum_verifier(recieved) or recv_seq_num != cur_seq_num:
-            print("Packet is corrupt or not correct sequence num")
             a = make_ack(flip_bit(cur_seq_num))
             try:
                 c_sock.sendall(a.encode())
@@ -109,7 +108,6 @@ def start_receiver(server_ip, server_port, connection_ID, loss_rate=0.0, corrupt
                 cur_seq_num = flip_bit(cur_seq_num)
                 file_recieved += data
 
-    print(num_recieved)
     checksum_val = checksum(file_recieved)
         
 
